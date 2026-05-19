@@ -1,0 +1,11 @@
+{
+	"id": "PayasLessStellarAdditions",
+	"name": "Paya's Less Stellar Additions",
+	"author": ["haya", "ariyi"],
+	"description": "A mod that adds whatever stuff I want into Balatro.",
+	"prefix": "plsa",
+	"main_file": "plsa.lua",
+	"display_name": "Less Stellar",
+	"version": "0.0.1a",
+	"dependencies": ["Steamodded (>=1.0.0~BETA-1620a)", "Lovely (>=0.9)"]
+}
