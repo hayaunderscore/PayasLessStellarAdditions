@@ -1,0 +1,24 @@
+[manifest]
+version = "1.0.0"
+dump_lua = true
+priority = 0
+
+# Save risk card stuff to here
+[[patches]]
+[patches.pattern]
+target = 'functions/misc_functions.lua'
+pattern = '''G.culled_table =  recursive_table_cull{'''
+position = 'before'
+payload = '''
+local risks = {}
+if G.GAME.payasaka_risk_objects then
+	for k, v in ipairs(G.GAME.payasaka_risk_objects) do
+		if v and (type(v) == "table") and v.is and v:is(PLSA.RiskObject) then
+			local ret = v:save()
+			if ret then risks[k] = ret end
+		end
+	end
+end
+
+'''
+match_indent = true
