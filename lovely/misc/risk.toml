@@ -22,3 +22,18 @@ end
 
 '''
 match_indent = true
+
+# Perpetuate logic
+[[patches]]
+[patches.pattern]
+target = ''
+pattern = '''draw_card(G.hand, G.discard, i*100/highlighted_count, 'down', false, G.hand.highlighted[i])'''
+position = 'at'
+payload = '''
+if G.GAME.plsa_perpetuate then
+	draw_card(G.hand, G.deck, i*100/highlighted_count, 'down', false, G.hand.highlighted[i])
+	G.deck:shuffle('plsa_perpetuate_shuf'..G.GAME.round_resets.ante)
+else
+	draw_card(G.hand, G.discard, i*100/highlighted_count, 'down', false, G.hand.highlighted[i])
+end
+'''

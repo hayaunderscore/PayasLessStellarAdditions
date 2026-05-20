@@ -55,6 +55,8 @@ PLSA.HookGameGlobals(function(run_start)
 	if not run_start then return end
 	---@type PLSA.RiskObject[]
 	G.GAME.plsa_risks_active = {}
+	-- Reset counters for stuff like Shrink
+	G.GAME.plsa_shrink_count = 0
 end)
 
 PLSA.HookCalculate(function(self, context)
@@ -75,6 +77,7 @@ end)
 ---@class PLSA.Risk: SMODS.Consumable
 ---@field risk_calculate? fun(self: PLSA.Risk|table, risk: PLSA.RiskObject|table, context: CalcContext|table): table?, boolean?  Calculates effects based on parameters in `context`. See [SMODS calculation](https://github.com/Steamodded/smods/wiki/calculate_functions) docs for details.
 ---@field can_calculate_outside_of_boss? boolean Determines if the Risk card's `risk_calculate` can run outside of a boss blind
+---@field tier 1|2|3|nil The tier of this Risk card, from 1 to 3.
 ---@overload fun(self: PLSA.Risk): PLSA.Risk
 PLSA.Risk = SMODS.Consumable:extend {
 	set = "Risk",
@@ -164,6 +167,241 @@ PLSA.Risk = SMODS.Consumable:extend {
 	draw = function(self, card, layer)
 		card.children.center:draw_shader('booster', nil, card.ARGS.send_to_shader)
 	end,
+}
+
+PLSA.Risk {
+	key = "hinder",
+	atlas = "risk",
+	pos = { x = 0, y = 0 },
+	config = { extra = { debuff = 10 } },
+	tier = 1,
+	loc_vars = function(self, info_queue, card)
+		return {
+			vars = { card.ability.extra.debuff }
+		}
+	end,
+	risk_calculate = function(self, risk, context)
+		if context.setting_blind then
+			-- Initial setup...
+			local hinderable_cards = PLSA.ShallowCopy(G.deck.cards)
+			hinderable_cards = PLSA.Filter(hinderable_cards,
+				function(v) return v.ability.plsa_hindered end)
+			local hindered_cards = {}
+			local count = math.min(risk.ability.extra.debuff, #hinderable_cards)
+			while count > 0 do
+				---@type Card
+				local c = table.remove(hinderable_cards,
+					pseudorandom('plsa_hinder_' .. G.GAME.round_resets.ante, 1, #hinderable_cards))
+				if c then hindered_cards[#hindered_cards + 1] = c end
+				if c.ability.debuff_sources and c.ability.debuff_sources["plsa_risk_hinder"] then goto continue end
+				count = count - 1
+				::continue::
+			end
+
+			for i = 1, #hindered_cards do
+				---@type Card
+				local c = hindered_cards[i]
+				draw_card(G.deck, G.hand, i * 100 / #hindered_cards, 'up', false, c, nil, nil)
+			end
+			delay(0.4)
+			for i = 1, #hindered_cards do
+				---@type Card
+				local c = hindered_cards[i]
+				c.ability.plsa_hindered = true
+				G.E_MANAGER:add_event(Event {
+					trigger = 'after',
+					delay = 0.15,
+					func = function()
+						c:juice_up()
+						play_sound('timpani')
+						c.ability.plsa_hindered = false
+						SMODS.debuff_card(c, true, 'plsa_risk_hinder')
+						return true
+					end
+				})
+			end
+			delay(0.4)
+			for i = 1, #hindered_cards do
+				---@type Card
+				local c = hindered_cards[i]
+				draw_card(G.hand, G.deck, i * 100 / #hindered_cards, 'down', true, c, nil, nil)
+			end
+		end
+	end
+}
+
+PLSA.Risk {
+	key = "hollow",
+	atlas = "risk",
+	pos = { x = 1, y = 0 },
+	tier = 1,
+	risk_calculate = function(self, risk, context)
+		if context.setting_blind then
+			for _, card in ipairs(G.consumeables) do
+				SMODS.debuff_card(card, true, "plsa_hollow")
+			end
+		end
+		if context.end_of_round and context.main_eval then
+			for _, card in ipairs(G.consumeables) do
+				SMODS.debuff_card(card, false, "plsa_hollow")
+			end
+		end
+	end,
+}
+
+PLSA.Risk {
+	key = "leak",
+	atlas = "risk",
+	pos = { x = 2, y = 0 },
+	tier = 1,
+	config = { extra = { money = 1 } },
+	risk_calculate = function(self, risk, context)
+		if context.before then
+			for _, card in ipairs(context.scoring_hand) do
+				G.E_MANAGER:add_event(Event {
+					trigger = 'after',
+					delay = 0.15,
+					func = function()
+						card:juice_up()
+						ease_dollars(-risk.ability.extra.money, true)
+						return true
+					end
+				})
+			end
+		end
+	end,
+	loc_vars = function(self, info_queue, card)
+		return {
+			vars = { card.ability.extra.money }
+		}
+	end
+}
+
+PLSA.Risk {
+	key = "shrink",
+	atlas = "risk",
+	pos = { x = 3, y = 0 },
+	tier = 1,
+	risk_calculate = function(self, risk, context)
+		if context.setting_blind then
+			-- Yes, this means it stacks now...
+			G.GAME.plsa_shrink_count = G.GAME.plsa_shrink_count + 1
+		end
+		if context.end_of_round and context.main_eval then
+			G.GAME.plsa_shrink_count = G.GAME.plsa_shrink_count - 1
+			if G.GAME.plsa_shrink_count < 0 then G.GAME.plsa_shrink_count = 0 end
+		end
+	end
+}
+
+-- Hook to get_chip_bonus
+local oldgcb = Card.get_chip_bonus
+function Card:get_chip_bonus()
+	return (oldgcb(self) or 0) / (2 ^ (G.GAME.plsa_shrink_count or 0))
+end
+
+PLSA.Risk {
+	key = "genesis",
+	atlas = "risk",
+	pos = { x = 4, y = 0 },
+	config = { extra = { cards = 7 } },
+	tier = 1,
+	risk_calculate = function(self, risk, context)
+		if context.setting_blind then
+			for _ = 1, risk.ability.extra.cards do
+				---@type Card
+				local c = SMODS.add_card { area = G.hand, set = 'Base', skip_materialize = true }
+				c.states.visible = false
+				G.E_MANAGER:add_event(Event {
+					trigger = 'after',
+					delay = 0.2,
+					func = function()
+						c.states.visible = true
+						c:start_materialize({ G.C.SET.Risk })
+						SMODS.recalc_debuff(c)
+						return true
+					end
+				})
+			end
+			delay(0.6)
+			for i = 1, risk.ability.extra.cards do
+				---@type Card
+				local c = G.hand[i]
+				draw_card(G.hand, G.deck, i * 100 / risk.ability.extra.cards, 'down', true, c, nil, nil)
+			end
+		end
+	end,
+	loc_vars = function(self, info_queue, card)
+		return {
+			vars = { card.ability.extra.cards }
+		}
+	end
+}
+
+PLSA.Risk {
+	key = "burden",
+	atlas = "risk",
+	pos = { x = 5, y = 0 },
+	tier = 1,
+	risk_calculate = function(self, risk, context)
+		if context.setting_blind then
+			---@type Card|nil
+			local joker = pseudorandom_element(G.jokers.cards, pseudoseed('plsa_burden_' .. G.GAME.round_resets.ante))
+			if joker then
+				joker:set_eternal(true)
+				joker:juice_up()
+			end
+		end
+	end
+}
+
+PLSA.Risk {
+	key = "ethereal",
+	atlas = "risk",
+	pos = { x = 6, y = 0 },
+	tier = 1,
+	risk_calculate = function(self, risk, context)
+		if context.setting_blind then
+			---@type Card|nil
+			local joker = pseudorandom_element(G.jokers.cards, pseudoseed('plsa_burden_' .. G.GAME.round_resets.ante))
+			if joker then
+				joker:set_perishable(true)
+				joker:juice_up()
+			end
+		end
+	end
+}
+
+PLSA.Risk {
+	key = "cyclone",
+	atlas = "risk",
+	pos = { x = 7, y = 0 },
+	tier = 1,
+	risk_calculate = function(self, risk, context)
+		if context.after then
+			G.E_MANAGER:add_event(Event {
+				func = function()
+					G.FUNCS.draw_from_hand_to_deck(nil)
+					return true
+				end
+			})
+		end
+	end
+}
+
+PLSA.Risk {
+	key = "perpetuate",
+	atlas = "risk",
+	pos = { x = 8, y = 0 },
+	tier = 1,
+	risk_calculate = function(self, risk, context)
+		if context.setting_blind then
+			G.GAME.plsa_perpetuate = true
+		end
+		if context.end_of_round and context.main_eval then
+			G.GAME.plsa_perpetuate = nil
+		end
+	end
 }
 
 PLSA.Risk {
