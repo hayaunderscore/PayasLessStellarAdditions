@@ -17,6 +17,7 @@ SMODS.Atlas { key = "reward", path = "consumables/reward.png", px = 71, py = 95 
 
 -- Various other things...
 local rgs_hooks = {}
+---@param func fun(run_start: boolean)
 function PLSA.HookGameGlobals(func)
 	rgs_hooks[#rgs_hooks + 1] = func
 end

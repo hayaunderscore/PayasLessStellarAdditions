@@ -76,6 +76,60 @@ return {
 					"{C:red}-#1#{} hand size",
 				}
 			},
+			c_plsa_decay = {
+				name = "Eclipse",
+				text = {
+					"{X:attention,C:white}÷#1#{} poker",
+					"hand levels",
+				}
+			},
+			c_plsa_stunted = {
+				name = "Stunted",
+				text = {
+					"Played {C:attention}Enhanced{} cards have a",
+					"{C:green}#1# in #2#{} chance of not {C:attention}activating",
+				}
+			},
+			c_plsa_backfire = {
+				name = "Backfire",
+				text = {
+					"{C:green}#1# in #2#{} chance of",
+					"reversing Joker order",
+					"when hand is played",
+				},
+			},
+			c_plsa_elusive = {
+				name = "Elusive",
+				text = {
+					"{C:attention}First{} drawn card",
+					"is faced down",
+					"Held cards are",
+					"flipped after playing"
+				}
+			},
+			c_plsa_cast = {
+				name = "Cast",
+				text = {
+					"{C:attention}Applies{} a {C:attention}random{}",
+					"boss blind's {C:attention}ability",
+					"to current boss blind",
+				}
+			},
+			c_plsa_elysium = {
+				name = "Elysium",
+				text = {
+					"{C:attention}Debuff{} the {C:attention}rightmost",
+					"and {C:attention}leftmost{} Joker",
+					"during the round",
+				}
+			},
+			c_plsa_prelude = {
+				name = "Prelude",
+				text = {
+					"{C:attention}Encounter{} a",
+					"{C:attention}Prelude Blind"
+				}
+			},
 		}
 	},
 	misc = {

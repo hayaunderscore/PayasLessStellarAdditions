@@ -297,6 +297,9 @@ PLSA.Risk {
 -- Hook to get_chip_bonus
 local oldgcb = Card.get_chip_bonus
 function Card:get_chip_bonus()
+	if self.ability.plsa_stunted then
+		return (self.base.nominal + (self.ability.perma_bonus or 0)) / (2 ^ (G.GAME.plsa_shrink_count or 0))
+	end
 	return (oldgcb(self) or 0) / (2 ^ (G.GAME.plsa_shrink_count or 0))
 end
 
@@ -441,4 +444,177 @@ PLSA.Risk {
 			risk.ability.done = true
 		end
 	end
+}
+
+PLSA.Risk {
+	key = 'decay',
+	atlas = "risk",
+	pos = { x = 2, y = 1 },
+	tier = 2,
+	config = { extra = { level = 2 } },
+	risk_calculate = function(self, risk, context)
+		if context.before then
+			risk.ability.last_hand_name = nil
+			if G.GAME.hands[context.scoring_name].level > 1 then
+				risk.ability.last_hand_name = context.scoring_name
+				risk.ability.last_hand_level = G.GAME.hands[context.scoring_name].level
+				local level = -math.max(1,
+					risk.ability.last_hand_level - (risk.ability.last_hand_level / risk.ability.extra.level))
+				SMODS.upgrade_poker_hands { hands = { context.scoring_name }, level_up = level }
+			end
+		end
+		if context.after and risk.ability.last_hand_name then
+			G.E_MANAGER:add_event(Event {
+				func = function()
+					local hand = G.GAME.hands[risk.ability.last_hand_name]
+					hand.level = risk.ability.last_hand_level
+					hand.mult = math.max(hand.s_mult + hand.l_mult * (hand.level - 1), 1)
+					hand.chips = math.max(hand.s_chips + hand.l_chips * (hand.level - 1), 0)
+					return true
+				end
+			})
+		end
+	end,
+	loc_vars = function(self, info_queue, card)
+		return { vars = { card.ability.extra.level } }
+	end
+}
+
+PLSA.Risk {
+	key = "stunted",
+	atlas = "risk",
+	pos = { x = 3, y = 1 },
+	tier = 2,
+	config = { extra = { chance = 2 } },
+	risk_calculate = function(self, risk, context)
+		if context.before then
+			for _, card in ipairs(G.play.cards) do
+				if SMODS.pseudorandom_probability(card, "plsa_stunted" .. G.GAME.round_resets.ante, 1, risk.ability.extra.chance)
+					and card.ability.set == 'Enhanced' then
+					card.ability.set = 'Default'
+					card.ability.plsa_old_effect = card.ability.effect
+					card.ability.plsa_old_extra = card.ability.extra_enhancement
+					card.ability.effect = nil
+					card.ability.extra_enhancement = false
+					card.ability.plsa_stunted = true
+					SMODS.calculate_effect({ message = "Stunted!" }, card)
+				end
+			end
+		end
+		if context.after then
+			for _, card in ipairs(G.play.cards) do
+				if card.ability.plsa_stunted then
+					card.ability.set = 'Enhanced'
+					card.ability.effect = card.ability.plsa_old_effect
+					card.ability.extra_enhancement = card.ability.plsa_old_extra
+					card.ability.plsa_old_effect = nil
+					card.ability.plsa_old_extra = nil
+					card.ability.plsa_stunted = false
+					SMODS.calculate_effect({ message = "Reverted!" }, card)
+				end
+			end
+		end
+	end,
+	loc_vars = function(self, info_queue, card)
+		local num, den = SMODS.get_probability_vars(card, 1, card.ability.extra.chance)
+		return { vars = { num, den } }
+	end
+}
+
+-- Handle hooks for stunted
+local stunted_function_addresses = {
+	get_chip_mult = "perma_mult",
+	get_chip_x_mult = "perma_x_mult",
+	get_chip_h_mult = "perma_h_mult",
+	get_chip_h_x_mult = "perma_h_x_mult",
+	-- get_chip_bonus = "perma_mult",
+	get_chip_x_bonus = "perma_x_chips",
+	get_chip_h_bonus = "perma_h_chips",
+	get_chip_h_x_bonus = "perma_h_x_chips",
+	get_h_dollars = "perma_h_dollars",
+}
+
+for addr, var in pairs(stunted_function_addresses) do
+	local old = Card[addr]
+	Card[addr] = function(self, context)
+		if self.ability.plsa_stunted then return self.ability[var] or 0 end
+		return old(self, context)
+	end
+end
+
+local oldce = Card.calculate_enhancement
+function Card:calculate_enhancement(context)
+	if self.ability.plsa_stunted then return nil end
+	return oldce(self, context)
+end
+
+PLSA.Risk {
+	key = "backfire",
+	atlas = "risk",
+	pos = { x = 3, y = 1 },
+	tier = 2,
+	config = { extra = { chance = 2 } },
+	loc_vars = function(self, info_queue, card)
+		local num, den = SMODS.get_probability_vars(card, 1, card.ability.extra.chance)
+		return { vars = { num, den } }
+	end,
+	risk_calculate = function(self, risk, context)
+		if context.press_play and SMODS.pseudorandom_probability(risk, 'plsa_backfire' .. G.GAME.round_resets.ante, 1, risk.ability.extra.chance) then
+			table.sort(G.jokers.cards, function(x, y) return x.sort_id > y.sort_id end)
+			G.jokers:set_ranks()
+		end
+	end,
+}
+
+PLSA.Risk {
+	key = "elusive",
+	atlas = "risk",
+	pos = { x = 5, y = 1 },
+	tier = 2,
+	risk_calculate = function(self, risk, context)
+		if context.press_play then
+			for _, card in ipairs(G.hand.cards) do
+				if not card.highlighted then card:flip() end
+			end
+		end
+	end
+}
+
+-- TODO
+PLSA.Risk {
+	key = "cast",
+	atlas = "risk",
+	pos = { x = 0, y = 2 },
+	tier = 3,
+	can_calculate_outside_of_boss = true,
+}
+
+PLSA.Risk {
+	key = "elysium",
+	atlas = "risk",
+	pos = { x = 1, y = 2 },
+	tier = 3,
+	risk_calculate = function(self, risk, context)
+		if context.plsa_risk_joker_moved and next(G.jokers.cards) then
+			for _, joker in ipairs(G.jokers.cards) do
+				SMODS.debuff_card(joker, false, "plsa_risk_elysium")
+			end
+			SMODS.debuff_card(G.jokers.cards[1], true, "plsa_risk_elysium")
+			SMODS.debuff_card(G.jokers.cards[#G.jokers.cards], true, "plsa_risk_elysium")
+		end
+		if context.ante_end or (context.end_of_round and context.main_eval) then
+			for _, joker in ipairs(G.jokers.cards) do
+				SMODS.debuff_card(joker, false, "plsa_risk_elysium")
+			end
+		end
+	end
+}
+
+-- TODO
+PLSA.Risk {
+	key = "prelude",
+	atlas = "risk",
+	pos = { x = 2, y = 2 },
+	tier = 3,
+	can_calculate_outside_of_boss = true,
 }

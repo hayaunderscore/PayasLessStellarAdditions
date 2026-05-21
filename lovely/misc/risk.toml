@@ -11,8 +11,8 @@ pattern = '''G.culled_table =  recursive_table_cull{'''
 position = 'before'
 payload = '''
 local risks = {}
-if G.GAME.payasaka_risk_objects then
-	for k, v in ipairs(G.GAME.payasaka_risk_objects) do
+if G.GAME.plsa_risks_active then
+	for k, v in ipairs(G.GAME.plsa_risks_active) do
 		if v and (type(v) == "table") and v.is and v:is(PLSA.RiskObject) then
 			local ret = v:save()
 			if ret then risks[k] = ret end
@@ -26,7 +26,7 @@ match_indent = true
 # Perpetuate logic
 [[patches]]
 [patches.pattern]
-target = ''
+target = 'functions/state_events.lua'
 pattern = '''draw_card(G.hand, G.discard, i*100/highlighted_count, 'down', false, G.hand.highlighted[i])'''
 position = 'at'
 payload = '''
@@ -37,3 +37,26 @@ else
 	draw_card(G.hand, G.discard, i*100/highlighted_count, 'down', false, G.hand.highlighted[i])
 end
 '''
+match_indent = true
+
+# Mini context for risk cards ONLY.
+# context.plsa_risk_joker_moved
+[[patches]]
+[patches.pattern]
+target = 'cardarea.lua'
+pattern = '''card.rank = k'''
+position = 'before'
+payload = '''
+card.plsa_old_rank = card.rank
+if k ~= card.plsa_old_rank and self == G.jokers then
+	local effects = {}
+	for _, risk in ipairs(G.GAME.plsa_risks_active or {}) do
+		local r = risk:calculate({ plsa_risk_joker_moved = true })
+		if r and type(r) == "table" then SMODS.merge_effects(effects, r) end
+	end
+	if next(effects) then
+		SMODS.calculate_effect(effects, G.deck.cards[1])
+	end
+end
+'''
+match_indent = true
