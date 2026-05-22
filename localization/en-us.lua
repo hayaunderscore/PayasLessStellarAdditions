@@ -1,5 +1,18 @@
 return {
 	descriptions = {
+		Blind = {
+			bl_plsa_prelude = {
+				name = 'Prelude Blind',
+				text = {
+					"The calm before",
+					"the storm..."
+				}
+			},
+			bl_plsa_question = {
+				name = 'The Cast', text = { "Fusion of the blinds", "#1#" }
+			},
+			bl_plsa_question_alt = { name = 'The Cast', text = { "Fuses 2 showdown", "boss blinds" } },
+		},
 		Risk = {
 			c_plsa_hinder = {
 				name = "Hinder",

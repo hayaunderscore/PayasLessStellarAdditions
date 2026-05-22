@@ -23,6 +23,33 @@ end
 '''
 match_indent = true
 
+[[patches]]
+[patches.pattern]
+target = 'functions/misc_functions.lua'
+pattern = '''GAME = G.GAME,'''
+position = 'before'
+payload = '''
+pta_risks = risks,
+'''
+match_indent = true
+
+# Load them back in!!!!
+[[patches]]
+[patches.pattern]
+target = 'game.lua'
+pattern = '''G.GAME.blind:load(saveTable.BLIND)'''
+position = 'after'
+payload = '''
+G.GAME.plsa_risks_active = {}
+local risks = saveTable.pta_risks or {}
+for k, v in ipairs(risks) do
+	local risk = PLSA.RiskObject(nil)
+	risk:load(v)
+	G.GAME.plsa_risks_active[k] = risk
+end
+'''
+match_indent = true
+
 # Perpetuate logic
 [[patches]]
 [patches.pattern]
@@ -35,6 +62,22 @@ if G.GAME.plsa_perpetuate then
 	G.deck:shuffle('plsa_perpetuate_shuf'..G.GAME.round_resets.ante)
 else
 	draw_card(G.hand, G.discard, i*100/highlighted_count, 'down', false, G.hand.highlighted[i])
+end
+'''
+match_indent = true
+
+# Prelude blind logic
+[[patches]]
+[patches.pattern]
+target = 'functions/state_events.lua'
+pattern = '''draw_card(G.play,G.discard, it*100/play_count,'down', false, v)'''
+position = 'at'
+payload = '''
+if (G.GAME.blind.config.blind.key == 'bl_plsa_prelude' and not G.GAME.blind.disabled) then
+	draw_card(G.play,G.deck, it*100/play_count,'down', false, v)
+	G.deck:shuffle('plsa_prelude_shuf'..G.GAME.round_resets.ante)
+else
+	draw_card(G.play,G.discard, it*100/play_count,'down', false, v)
 end
 '''
 match_indent = true
@@ -57,6 +100,54 @@ if k ~= card.plsa_old_rank and self == G.jokers then
 	if next(effects) then
 		SMODS.calculate_effect(effects, G.deck.cards[1])
 	end
+end
+'''
+match_indent = true
+
+# Elusive
+[[patches]]
+[patches.pattern]
+target = 'functions/state_events.lua'
+pattern = '''draw_card(G.deck,G.hand, i*100/hand_space,'up', true)'''
+position = 'at'
+payload = '''
+draw_card(G.deck,G.hand, i*100/hand_space,'up', true, nil, nil, nil, i <= (G.GAME.plsa_elusive_cards or 0))
+'''
+match_indent = true
+
+# This is a very stupid patch.
+# I shouldn't need to do this but doing this some other way requires me to tinker more and ionlikedat
+# Thunk pls fix
+[[patches]]
+[patches.pattern]
+target = 'cardarea.lua'
+pattern = '''local stay_flipped = G.GAME and G.GAME.blind and G.GAME.blind:stay_flipped(self, card, area)'''
+position = 'at'
+payload = '''
+stay_flipped = stay_flipped or (G.GAME and G.GAME.blind and G.GAME.blind:stay_flipped(self, card, area))
+'''
+match_indent = true
+
+[[patches]]
+[patches.pattern]
+target = '''functions/UI_definitions.lua'''
+pattern = '''blind_choice.animation = AnimatedSprite(0,0, 1.4, 1.4, G.ANIMATION_ATLAS[blind_choice.config.atlas] or G.ANIMATION_ATLAS['blind_chips'],  blind_choice.config.pos)'''
+position = 'after'
+payload = '''
+if blind_choice.config.key == "bl_payasaka_question" and G.GAME and G.GAME.round_resets and G.GAME.round_resets.last_cast_boss then
+	blind_choice.animation:set_sprite_pos({ x = 0, y = 1 })
+end
+'''
+match_indent = true
+
+[[patches]]
+[patches.pattern]
+target = '''blind.lua'''
+pattern = '''self.children.animatedSprite:set_sprite_pos(self.config.blind.pos)'''
+position = 'after'
+payload = '''
+if self.pos and self.pos.edited then
+	self.children.animatedSprite:set_sprite_pos(self.pos)
 end
 '''
 match_indent = true

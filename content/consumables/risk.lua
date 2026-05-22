@@ -577,6 +577,12 @@ PLSA.Risk {
 				if not card.highlighted then card:flip() end
 			end
 		end
+		if context.setting_blind then
+			G.GAME.plsa_elusive_cards = (G.GAME.plsa_elusive_cards or 0) + 1
+		end
+		if context.end_of_round and context.main_eval then
+			G.GAME.plsa_elusive_cards = 0
+		end
 	end
 }
 
@@ -587,6 +593,55 @@ PLSA.Risk {
 	pos = { x = 0, y = 2 },
 	tier = 3,
 	can_calculate_outside_of_boss = true,
+	use = function(self, card, area, copier)
+		if not G.GAME.plsa_prelude_next_blind and G.GAME.round_resets.blind_choices.Boss ~= "bl_plsa_question" then
+			G.GAME.round_resets.last_cast_boss = G.GAME.round_resets.blind_choices.Boss
+			PLSA.ChangeUpcomingBoss('bl_plsa_question', true)
+		else
+			if G.GAME.plsa_prelude_next_blind ~= "bl_plsa_question" then
+				G.GAME.round_resets.last_cast_boss = G.GAME.plsa_prelude_next_blind
+				G.GAME.plsa_prelude_next_blind = "bl_plsa_question"
+			end
+		end
+		G.GAME.plsa_cannot_reroll = true
+
+		-- determine bosses for the cast
+		G.GAME.banned_keys['bl_plsa_question'] = true -- Prevent get_new_boss from selecting The Cast itself!
+		local current_boss = G.GAME.round_resets.last_cast_boss or get_new_boss()
+		G.GAME.plsa_merged_boss_keys = G.GAME.plsa_merged_boss_keys or {}
+		if not next(G.GAME.plsa_merged_boss_keys) then
+			-- first entry is the current boss
+			table.insert(G.GAME.plsa_merged_boss_keys, current_boss)
+		end
+		-- Get a random boss blind to append
+		table.insert(G.GAME.plsa_merged_boss_keys, get_new_boss())
+		G.GAME.banned_keys['bl_plsa_question'] = nil
+
+		-- get biggest chips multiplier
+		for i = 1, #G.GAME.plsa_merged_boss_keys do
+			local blind = G.P_BLINDS[G.GAME.plsa_merged_boss_keys[i]]
+			G.P_BLINDS['bl_plsa_question'].mult = math.max(G.P_BLINDS['bl_plsa_question'].mult, blind.mult)
+		end
+
+		PLSA.Risk.use(self, card, area, copier)
+	end,
+	risk_calculate = function(self, risk, context)
+		if (context.end_of_round and context.main_eval) and (not risk.ability.persist) and G.GAME.blind_on_deck == 'Boss' then
+			G.GAME.plsa_cannot_reroll = nil
+			G.GAME.round_resets.last_cast_boss = nil
+			G.GAME.plsa_merged_boss_keys = {}
+			G.GAME.plsa_casted = nil
+		end
+		if context.ending_shop and not G.GAME.plsa_casted then
+			if not G.GAME.plsa_prelude_next_blind then
+				G.GAME.plsa_prelude_next_blind = "bl_plsa_question"
+				PLSA.ChangeUpcomingBoss('bl_plsa_prelude', true, true)
+			else
+				PLSA.ChangeUpcomingBoss('bl_plsa_question', true, true)
+			end
+			G.GAME.plsa_casted = true
+		end
+	end
 }
 
 PLSA.Risk {
@@ -617,4 +672,19 @@ PLSA.Risk {
 	pos = { x = 2, y = 2 },
 	tier = 3,
 	can_calculate_outside_of_boss = true,
+	risk_calculate = function(self, risk, context)
+		if (context.end_of_round and context.main_eval) and (not risk.ability.persist) and G.GAME.blind_on_deck == 'Boss' then
+			G.GAME.plsa_cannot_reroll = nil
+		end
+		if context.ending_shop and not G.GAME.plsa_prelude_next_blind then
+			G.GAME.plsa_prelude_next_blind = G.GAME.round_resets.blind_choices.Boss
+			PLSA.ChangeUpcomingBoss('bl_plsa_prelude', true, true)
+		end
+	end,
+	use = function(self, card, area, copier)
+		G.GAME.plsa_prelude_next_blind = G.GAME.round_resets.blind_choices.Boss
+		PLSA.ChangeUpcomingBoss('bl_plsa_prelude', true)
+		G.GAME.plsa_cannot_reroll = true
+		PLSA.Risk.use(self, card, area, copier)
+	end
 }

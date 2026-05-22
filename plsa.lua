@@ -12,6 +12,7 @@ function PLSA.LoadFolder(path)
 end
 
 -- Object atlases
+SMODS.Atlas { key = "blinds", path = "blinders.png", px = 34, py = 34, atlas_table = 'ANIMATION_ATLAS', frames = 21 }
 SMODS.Atlas { key = "risk", path = "consumables/risk.png", px = 71, py = 95 }
 SMODS.Atlas { key = "reward", path = "consumables/reward.png", px = 71, py = 95 }
 
@@ -75,4 +76,78 @@ function PLSA.Filter(orig, filter)
 	return copy
 end
 
+-- Blind related
+function PLSA.RecreateBossBlindSelect()
+	if G.blind_select_opts and G.blind_select_opts.boss then
+		local par = G.blind_select_opts.boss.parent
+
+		G.blind_select_opts.boss:remove()
+		G.blind_select_opts.boss = UIBox {
+			T = { par.T.x, 0, 0, 0, },
+			definition =
+			{ n = G.UIT.ROOT, config = { align = "cm", colour = G.C.CLEAR }, nodes = {
+				UIBox_dyn_container({ create_UIBox_blind_choice('Boss') }, false, get_blind_main_colour('Boss'), mix_colours(G.C.BLACK, get_blind_main_colour('Boss'), 0.8))
+			} },
+			config = { align = "bmi",
+				offset = { x = 0, y = G.ROOM.T.y + 9 },
+				major = par,
+				xy_bond = 'Weak'
+			}
+		}
+		par.config.object = G.blind_select_opts.boss
+		par.config.object:recalculate()
+		G.blind_select_opts.boss.parent = par
+		G.blind_select_opts.boss.alignment.offset.y = 0
+	end
+end
+
+---Changes the upcoming boss.
+---@param blind string The blind key to replace the current boss.
+---@param force boolean? Whether to force the blind key to be set regardless of Prelude or Cast conditions.
+---@param silent boolean? Whether to change the actual blind select box or not.
+function PLSA.ChangeUpcomingBoss(blind, force, silent)
+	local function changeBlind()
+		if not force then
+			if G.GAME.round_resets.last_cast_boss then
+				G.GAME.round_resets.last_cast_boss = blind
+				G.GAME.plsa_merged_boss_keys[2] = G.GAME.round_resets.last_cast_boss
+			elseif G.GAME.plsa_prelude_next_blind then
+				G.GAME.plsa_prelude_next_blind = blind
+			else
+				G.GAME.round_resets.blind_choices.Boss = blind
+			end
+		else
+			G.GAME.round_resets.blind_choices.Boss = blind
+		end
+	end
+
+	if silent then
+		changeBlind()
+		return
+	end
+
+	-- for some reason the game restores the state of the last boss blind to current
+	local old_state = G.GAME.round_resets.blind_states[G.GAME.blind_on_deck]
+	G.E_MANAGER:add_event(Event {
+		func = function()
+			G.E_MANAGER:add_event(Event {
+				trigger = 'after',
+				delay = 0.2,
+				func = function()
+					G.GAME.round_resets.blind_states[G.GAME.blind_on_deck] = old_state
+					return true
+				end
+			})
+
+			changeBlind()
+
+			PLSA.RecreateBossBlindSelect()
+			return true
+		end
+	})
+	G.GAME.plsa_cannot_reroll = true
+end
+
 PLSA.LoadFolder("content/consumables/")
+PLSA.LoadFolder("content/blinds/")
+PLSA.LoadFolder("content/blinds/showdown/")
