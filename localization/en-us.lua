@@ -143,6 +143,23 @@ return {
 					"{C:attention}Prelude Blind"
 				}
 			},
+			c_plsa_flow = {
+				name = "Flow",
+				text = {
+					"Held cards are {C:attention}debuffed",
+					"after playing a hand",
+				},
+			},
+		},
+		Spectral = {
+			c_plsa_showdown = {
+				name = "Showdown",
+				text = {
+					"{C:attention}Transforms{} the boss",
+					"blind to a {C:attention}showdown",
+					"boss blind",
+				}
+			},
 		}
 	},
 	misc = {

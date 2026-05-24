@@ -688,3 +688,57 @@ PLSA.Risk {
 		PLSA.Risk.use(self, card, area, copier)
 	end
 }
+
+PLSA.Risk {
+	key = "flow",
+	atlas = "risk",
+	pos = { x = 3, y = 2 },
+	tier = 3,
+	risk_calculate = function(self, risk, context)
+		if context.after and SMODS.calculate_round_score() < G.GAME.blind.chips then
+			for _, card in ipairs(G.hand.cards) do
+				G.E_MANAGER:add_event(Event {
+					trigger = 'after',
+					delay = 0.15,
+					func = function()
+						if card then
+							card:juice_up()
+							SMODS.debuff_card(card, true, "plsa_flow")
+						end
+						return true
+					end
+				})
+			end
+		end
+		if context.end_of_round and context.main_eval then
+			for _, card in ipairs(G.playing_cards) do
+				SMODS.debuff_card(card, false, "plsa_flow")
+			end
+		end
+	end
+}
+
+PLSA.Risk {
+	key = "showdown",
+	set = "Spectral",
+	atlas = "risk",
+	pos = { x = 4, y = 2 },
+	tier = 3,
+	soul_set = 'Risk',
+	use = function(self, card, area, copier)
+		-- work around the fact that showdown blinds are only selected during every 8 antes
+		local old_ante = G.GAME.round_resets.ante
+		G.GAME.round_resets.ante = G.GAME.win_ante
+		local showdown = SMODS.poll_object({
+			type = 'Blind',
+			guaranteed = true,
+			blind_type = 'boss',
+		})
+		G.GAME.round_resets.ante = old_ante
+		if showdown then
+			PLSA.ChangeUpcomingBoss(showdown)
+			G.GAME.plsa_cannot_reroll = true
+		end
+		PLSA.Risk.use(self, card, area, copier)
+	end
+}
