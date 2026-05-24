@@ -161,6 +161,11 @@ PLSA.Risk = SMODS.Consumable:extend {
 			end
 		}))
 	end,
+	generate_ui = function(self, info_queue, card, desc_nodes, specific_vars, full_UI_table)
+		SMODS.Consumable.generate_ui(self, info_queue, card, desc_nodes, specific_vars, full_UI_table)
+		local iq = { key = 'plsa_risk_card_hint', set = 'Other' }
+		info_queue[#info_queue + 1] = iq
+	end,
 	can_use = function(self, card)
 		return G.STATE == G.STATES.BLIND_SELECT or booster_obj or G.STATE == G.STATES.SHOP
 	end,
@@ -551,7 +556,7 @@ end
 PLSA.Risk {
 	key = "backfire",
 	atlas = "risk",
-	pos = { x = 3, y = 1 },
+	pos = { x = 4, y = 1 },
 	tier = 2,
 	config = { extra = { chance = 2 } },
 	loc_vars = function(self, info_queue, card)

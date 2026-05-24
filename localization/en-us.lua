@@ -160,6 +160,15 @@ return {
 					"boss blind",
 				}
 			},
+		},
+		Other = {
+			plsa_risk_card_hint = {
+				name = "Risk Card",
+				text = {
+					"Effects apply only",
+					"during the Boss Blind"
+				}
+			}
 		}
 	},
 	misc = {
