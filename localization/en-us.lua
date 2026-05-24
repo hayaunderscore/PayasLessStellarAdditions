@@ -160,6 +160,14 @@ return {
 					"boss blind",
 				}
 			},
+			c_plsa_gacha = {
+				name = "10-Recruitment Ticket",
+				text = {
+					"Choose {C:attention}5{} of a",
+					"selection of {C:attention}10{} jokers",
+					"{C:inactive,s:0.8}Rares not guaranteed!{}"
+				}
+			}
 		},
 		Other = {
 			plsa_risk_card_hint = {
@@ -168,6 +176,11 @@ return {
 					"Effects apply only",
 					"during the Boss Blind"
 				}
+			}
+		},
+		Gacha = {
+			plsa_gacha_baron_pickup = {
+				name = ""
 			}
 		}
 	},
