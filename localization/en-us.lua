@@ -179,9 +179,36 @@ return {
 			}
 		},
 		Gacha = {
-			plsa_gacha_baron_pickup = {
-				name = ""
-			}
+			gacha_plsa_baron_pickup = {
+				name = "PLACEHOLDER",
+				text = {
+					"PLACEHOLDER"
+				}
+			},
+			gacha_plsa_mime_pickup = {
+				name = "PLACEHOLDER",
+				text = {
+					"PLACEHOLDER"
+				}
+			},
+			gacha_plsa_blueprint_pickup = {
+				name = "PLACEHOLDER",
+				text = {
+					"PLACEHOLDER"
+				}
+			},
+			gacha_plsa_brainstorm_pickup = {
+				name = "PLACEHOLDER",
+				text = {
+					"PLACEHOLDER"
+				}
+			},
+			gacha_plsa_default = {
+				name = "Default",
+				text = {
+					"No rate ups"
+				}
+			},
 		}
 	},
 	misc = {
@@ -190,6 +217,10 @@ return {
 			b_risk_cards = "Risk Cards",
 			k_reward = "Reward",
 			b_reward_cards = "Reward Cards",
+			ph_plsa_gacha_banner = "Choose a Banner!",
+		},
+		v_dictionary = {
+			ph_plsa_gacha_pity = "Pity: #1#"
 		}
 	}
 }

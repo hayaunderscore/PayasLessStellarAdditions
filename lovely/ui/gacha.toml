@@ -1,0 +1,49 @@
+[manifest]
+version = "1.0.0"
+dump_lua = true
+priority = 0
+
+# Misc elements (taken from hotpot)
+[[patches]]
+[patches.pattern]
+target = '''=[SMODS _ "src/ui.lua"]'''
+pattern = '''{n=G.UIT.R, config={align = "cm", r = 0.1, colour = G.C.BLACK, emboss = 0.05}, nodes=deck_tables}, '''
+position = 'before'
+payload = '''
+args.plsa_misc_elements and args.plsa_misc_elements() or nil,
+'''
+match_indent = true
+
+[[patches]]
+[patches.pattern]
+target = '''functions/common_events.lua'''
+pattern = '''if first_pass and not (_c.set == 'Edition') and badges then'''
+position = 'before'
+payload = '''
+if first_pass and card and card.config and card.config.center and card.config.center.plsa_gacha then
+  local key = card.config.center.plsa_gacha
+  local event = PLSA.GachaBanners[key]
+  local t = { key = key, set = 'Gacha' }
+  local res = {}
+  if event.collection_loc_vars and type(event.collection_loc_vars) == 'function' then
+    res = event:collection_loc_vars(info_queue) or {}
+    t.vars = res.vars or {}
+    t.key = res.key or t.key
+    t.set = res.set or t.set
+  end
+  info_queue[#info_queue+1] = t
+end
+'''
+match_indent = true
+
+[[patches]]
+[patches.pattern]
+target = '''functions/common_events.lua'''
+pattern = '''if _c.set == 'Other' then
+        localize{type = 'other', key = _c.key, nodes = desc_nodes, vars = specific_vars or _c.vars}'''
+position = 'after'
+payload = '''
+elseif _c.set == 'Gacha' then
+  localize{type = 'descriptions', key = _c.key, set = _c.set, nodes = desc_nodes, vars = specific_vars or _c.vars}
+'''
+match_indent = true
